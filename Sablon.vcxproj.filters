@@ -30,8 +30,18 @@
     <None Include="basic.vert">
       <Filter>Source Files\Shader Files</Filter>
     </None>
-    <None Include="texture.frag">
+    <None Include="panel-texture.frag">
       <Filter>Source Files\Shader Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\Downloads\metal-panel.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
