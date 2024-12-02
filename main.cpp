@@ -15,7 +15,7 @@ struct Object {
     float x, y, lifetime;
 };
 
-void processInput(GLFWwindow* window, int* isSonarTurnedOn);
+void processInput(GLFWwindow* window, int* isSonarTurnedOn, float* depth);
 void convertNDCtoWindowCoords(float ndcX, float ndcY, int windowWidth, int windowHeight, float* windowX, float* windowY);
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
@@ -58,12 +58,14 @@ int main(void)
     unsigned int program = createShader("panel.vert", "panel.frag");
     unsigned int sonarShader = createShader("sonar.vert", "sonar.frag");
     unsigned int buttonShader = createShader("button.vert", "button.frag");
+    unsigned int depthBarShader = createShader("progressBar.vert", "depthBar.frag");
+    unsigned int oBarShader = createShader("progressBar.vert", "oBar.frag");
 
-    unsigned int VBO[3], VAO[3], EBO[2];
+    unsigned int VBO[5], VAO[5], EBO[4];
 
-    glGenVertexArrays(3, VAO);
-    glGenBuffers(3, VBO);
-    glGenBuffers(2, EBO);
+    glGenVertexArrays(5, VAO);
+    glGenBuffers(5, VBO);
+    glGenBuffers(4, EBO);
 
     float vertices[] = {
          1.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.5f,    1.0,  1.0,    // top right
@@ -135,6 +137,48 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    float depthBarVertices[] = {
+        -0.25f,  0.8f, 0.0f,    // top right
+        -0.25f, -0.2f, 0.0f,    // bottom right
+        -0.75f, -0.2f, 0.0f,    // bottom left
+        -0.75f,  0.8f, 0.0f     // top left 
+    };
+    unsigned int depthBarIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[3]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[3]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(depthBarVertices), depthBarVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[2]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(depthBarIndices), depthBarIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    float oBarVertices[] = {
+        0.5f,  0.8f, 0.0f,    // top right
+        0.5f, -0.2f, 0.0f,    // bottom right
+        0.0f, -0.2f, 0.0f,    // bottom left
+        0.0f,  0.8f, 0.0f     // top left 
+    };
+    unsigned int oBarIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[4]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[4]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(oBarVertices), oBarVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[3]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(oBarIndices), oBarIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
     unsigned int metalPanelTexture = createTexture("metal-panel.jpg");
     unsigned int sonarTexture = createSonarTexture();
     unsigned int buttonOffTexture = createOffButtonTexture();
@@ -144,11 +188,14 @@ int main(void)
     std::srand(static_cast<unsigned>(std::time(0)));
     float currentTime;
     float lastObjectGeneratedTime = 0;
+    float lastBreath = 0;
     std::vector<Object> objects;
+    float depth = 0;
+    float oxygen = 100;
 
     while (!glfwWindowShouldClose(window))
     {
-        processInput(window, &isSonarTurnedOn);
+        processInput(window, &isSonarTurnedOn, &depth);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindTexture(GL_TEXTURE_2D, metalPanelTexture);
@@ -218,6 +265,34 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        glViewport(mode->width / 2, 0, mode->width / 2, mode->height);
+
+        glUseProgram(depthBarShader);
+        glUniform1f(glGetUniformLocation(depthBarShader, "depth"), depth / 250);
+        glBindVertexArray(VAO[3]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        if (currentTime - 0.25f > lastBreath) {        
+            if (depth != 0) {
+                if (oxygen > 0)
+                    oxygen --;
+            }
+
+            lastBreath = currentTime;
+        }
+
+        if (depth == 0) {
+            if (oxygen < 100)
+                oxygen += 0.05;
+        }
+
+        glUseProgram(oBarShader);
+        glUniform1f(glGetUniformLocation(oBarShader, "oLevel"), oxygen / 100);
+        glBindVertexArray(VAO[4]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -235,7 +310,7 @@ void generateObject(std::vector<Object>* objects) {
     objects->push_back(newObject);
 }
 
-void processInput(GLFWwindow* window, int* isSonarTurnedOn) {
+void processInput(GLFWwindow* window, int* isSonarTurnedOn, float* depth) {
     static int lastMouseState = GLFW_RELEASE;
     int currentMouseState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
 
@@ -259,6 +334,20 @@ void processInput(GLFWwindow* window, int* isSonarTurnedOn) {
         *isSonarTurnedOn = (*isSonarTurnedOn) ? 0 : 1;
 
     lastMouseState = currentMouseState; // Update last mouse state
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        if (*depth < 250)
+            (*depth) += 0.05;
+    }
+        
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        if (*depth > 0)
+            (*depth) -= 0.05;
+        else
+            (*depth) = 0;
+    }
+        
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
