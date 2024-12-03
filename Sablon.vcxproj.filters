@@ -36,7 +36,7 @@
     <None Include="panel.frag">
       <Filter>Source Files\Shader Files</Filter>
     </None>
-    <None Include="button.vert">
+    <None Include="texturedRectangle.vert">
       <Filter>Source Files\Shader Files</Filter>
     </None>
     <None Include="button.frag">
@@ -49,6 +49,12 @@
       <Filter>Source Files\Shader Files</Filter>
     </None>
     <None Include="oBar.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="number.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="number.frag">
       <Filter>Source Files\Shader Files</Filter>
     </None>
   </ItemGroup>
