@@ -145,10 +145,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="button.frag" />
-    <None Include="button.vert" />
+    <None Include="texturedRectangle.vert" />
+    <None Include="depthBar.frag" />
+    <None Include="number.frag" />
+    <None Include="number.vert" />
+    <None Include="oBar.frag" />
     <None Include="panel.vert" />
     <None Include="packages.config" />
     <None Include="panel.frag" />
+    <None Include="progressBar.vert" />
     <None Include="sonar.frag" />
     <None Include="sonar.vert" />
   </ItemGroup>

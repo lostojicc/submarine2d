@@ -8,6 +8,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <unordered_map>
 
 #define CRES 100
 
@@ -15,7 +16,7 @@ struct Object {
     float x, y, lifetime;
 };
 
-void processInput(GLFWwindow* window, int* isSonarTurnedOn);
+void processInput(GLFWwindow* window, int* isSonarTurnedOn, float* depth);
 void convertNDCtoWindowCoords(float ndcX, float ndcY, int windowWidth, int windowHeight, float* windowX, float* windowY);
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
@@ -24,6 +25,7 @@ unsigned int createSonarTexture();
 unsigned int createOffButtonTexture();
 unsigned int createOnButtonTexture();
 void generateObject(std::vector<Object>* objects);
+std::unordered_map<int, GLuint> loadNumberTextures();
 
 int main(void)
 {
@@ -57,13 +59,16 @@ int main(void)
 
     unsigned int program = createShader("panel.vert", "panel.frag");
     unsigned int sonarShader = createShader("sonar.vert", "sonar.frag");
-    unsigned int buttonShader = createShader("button.vert", "button.frag");
+    unsigned int buttonShader = createShader("texturedRectangle.vert", "button.frag");
+    unsigned int depthBarShader = createShader("progressBar.vert", "depthBar.frag");
+    unsigned int oBarShader = createShader("progressBar.vert", "oBar.frag");
+    unsigned int numberShader = createShader("texturedRectangle.vert", "number.frag");
 
-    unsigned int VBO[3], VAO[3], EBO[2];
+    unsigned int VBO[11], VAO[11], EBO[10];
 
-    glGenVertexArrays(3, VAO);
-    glGenBuffers(3, VBO);
-    glGenBuffers(2, EBO);
+    glGenVertexArrays(11, VAO);
+    glGenBuffers(11, VBO);
+    glGenBuffers(10, EBO);
 
     float vertices[] = {
          1.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.5f,    1.0,  1.0,    // top right
@@ -135,20 +140,207 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    float depthBarVertices[] = {
+        -0.2f,  0.8f, 0.0f,    // top right
+        -0.2f, -0.2f, 0.0f,    // bottom right
+        -0.8f, -0.2f, 0.0f,    // bottom left
+        -0.8f,  0.8f, 0.0f     // top left 
+    };
+    unsigned int depthBarIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[3]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[3]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(depthBarVertices), depthBarVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[2]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(depthBarIndices), depthBarIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    float oBarVertices[] = {
+        0.55f,  0.8f, 0.0f,    // top right
+        0.55f, -0.2f, 0.0f,    // bottom right
+        -0.05f, -0.2f, 0.0f,    // bottom left
+        -0.05f,  0.8f, 0.0f     // top left 
+    };
+    unsigned int oBarIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[4]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[4]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(oBarVertices), oBarVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[3]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(oBarIndices), oBarIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    float depthHVertices[] = {
+        -0.6f, -0.2f, 0.0f,  1.0f, 1.0f,  // top right
+        -0.6f, -0.4f, 0.0f,  1.0f, 0.0f,  // bottom right
+        -0.8f, -0.4f, 0.0f,  0.0f, 0.0f,  // bottom left
+        -0.8f,  -0.2f, 0.0f,   0.0f, 1.0f  // top left 
+    };
+    unsigned int depthHIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    float depthTVertices[] = {
+        -0.4f,  -0.2f, 0.0f,  1.0f, 1.0f,  // top right
+        -0.4f, -0.4f, 0.0f,  1.0f, 0.0f,  // bottom right
+        -0.6f, -0.4f, 0.0f,  0.0f, 0.0f,  // bottom left
+        -0.6f,  -0.2f, 0.0f,  0.0f, 1.0f   // top left 
+    };
+    unsigned int depthTIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    float depthOVertices[] = {
+        -0.2f,  -0.2f, 0.0f,  1.0f, 1.0f,  // top right
+        -0.2f, -0.4f, 0.0f,  1.0f, 0.0f,  // bottom right
+        -0.4f, -0.4f, 0.0f,  0.0f, 0.0f,  // bottom left
+        -0.4f,  -0.2f, 0.0f,  0.0f, 1.0f     // top left 
+    };
+    unsigned int depthOIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[5]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[5]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(depthHVertices), depthHVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[4]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(depthBarIndices), depthBarIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    glBindVertexArray(VAO[6]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[6]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(depthTVertices), depthTVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[5]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(depthTIndices), depthTIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    glBindVertexArray(VAO[7]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[7]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(depthOVertices), depthOVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[6]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(depthOIndices), depthOIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    float oHVertices[] = {
+        0.15f, -0.2f, 0.0f,  1.0f, 1.0f,  // top right
+        0.15f, -0.4f, 0.0f,  1.0f, 0.0f,  // bottom right
+        -0.05f, -0.4f, 0.0f,  0.0f, 0.0f,  // bottom left
+        -0.05f,  -0.2f, 0.0f,   0.0f, 1.0f  // top left 
+    };
+    unsigned int oHIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    float oTVertices[] = {
+        0.35f,  -0.2f, 0.0f,  1.0f, 1.0f,  // top right
+        0.35f, -0.4f, 0.0f,  1.0f, 0.0f,  // bottom right
+        0.15f, -0.4f, 0.0f,  0.0f, 0.0f,  // bottom left
+        0.15f,  -0.2f, 0.0f,  0.0f, 1.0f   // top left 
+    };
+    unsigned int oTIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    float oOVertices[] = {
+        0.55f,  -0.2f, 0.0f,  1.0f, 1.0f,  // top right
+        0.55f, -0.4f, 0.0f,  1.0f, 0.0f,  // bottom right
+        0.35f, -0.4f, 0.0f,  0.0f, 0.0f,  // bottom left
+        0.35f,  -0.2f, 0.0f,  0.0f, 1.0f     // top left 
+    };
+    unsigned int oOIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    }; 
+
+    glBindVertexArray(VAO[8]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[8]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(oHVertices), oHVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[7]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(oHIndices), oHIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    glBindVertexArray(VAO[9]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[9]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(oTVertices), oTVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[8]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(oTIndices), oTIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    glBindVertexArray(VAO[10]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[10]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(oOVertices), oOVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[9]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(oOIndices), oOIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    
+
     unsigned int metalPanelTexture = createTexture("metal-panel.jpg");
     unsigned int sonarTexture = createSonarTexture();
     unsigned int buttonOffTexture = createOffButtonTexture();
     unsigned int buttonOnTexture = createOnButtonTexture();
+    std::unordered_map<int, GLuint> numberTextures = loadNumberTextures();
 
     int isSonarTurnedOn = 0;
     std::srand(static_cast<unsigned>(std::time(0)));
     float currentTime;
     float lastObjectGeneratedTime = 0;
+    float lastBreath = 0;
     std::vector<Object> objects;
+    float depth = 0;
+    float oxygen = 100;
+    int depthHundreds, depthTens, depthOnes, oxygenHundreds, oxygenTens, oxygenOnes;
 
     while (!glfwWindowShouldClose(window))
     {
-        processInput(window, &isSonarTurnedOn);
+        processInput(window, &isSonarTurnedOn, &depth);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindTexture(GL_TEXTURE_2D, metalPanelTexture);
@@ -218,6 +410,88 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        glViewport(mode->width / 2, 0, mode->width / 2, mode->height);
+
+        glUseProgram(depthBarShader);
+        glUniform1f(glGetUniformLocation(depthBarShader, "depth"), depth / 250);
+        glBindVertexArray(VAO[3]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        if (currentTime - 0.25f > lastBreath) {        
+            if (depth != 0) {
+                if (oxygen > 0)
+                    oxygen --;
+            }
+
+            lastBreath = currentTime;
+        }
+
+        if (depth == 0) {
+            if (oxygen < 100)
+                oxygen += 0.05;
+        }
+
+        glUseProgram(oBarShader);
+        glUniform1f(glGetUniformLocation(oBarShader, "oLevel"), oxygen / 100);
+        glBindVertexArray(VAO[4]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        depthHundreds = (int)depth / 100;
+        depthTens = ((int)depth / 10) % 10;
+        depthOnes = (int)depth % 10;
+
+        glUseProgram(numberShader);
+
+        glBindTexture(GL_TEXTURE_2D, numberTextures[depthHundreds]);
+        glUniform1i(glGetUniformLocation(numberShader, "h"), depthHundreds);
+        glUniform1i(glGetUniformLocation(numberShader, "t"), depthTens);
+        glUniform1i(glGetUniformLocation(numberShader, "o"), depthOnes);
+
+        glUniform1i(glGetUniformLocation(numberShader, "positionIndicator"), 0);
+        glBindVertexArray(VAO[5]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glBindTexture(GL_TEXTURE_2D, numberTextures[depthTens]);
+        glUniform1i(glGetUniformLocation(numberShader, "positionIndicator"), 1); 
+        glBindVertexArray(VAO[6]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glBindTexture(GL_TEXTURE_2D, numberTextures[depthOnes]);
+        glUniform1i(glGetUniformLocation(numberShader, "positionIndicator"), 2); 
+        glBindVertexArray(VAO[7]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        oxygenHundreds = (int)oxygen / 100;
+        oxygenTens = ((int)oxygen / 10) % 10;
+        oxygenOnes = (int)oxygen % 10;
+
+        glUniform1i(glGetUniformLocation(numberShader, "h"), oxygenHundreds);
+        glUniform1i(glGetUniformLocation(numberShader, "t"), oxygenTens);
+        glUniform1i(glGetUniformLocation(numberShader, "o"), oxygenOnes);
+
+        glBindTexture(GL_TEXTURE_2D, numberTextures[oxygenHundreds]);
+        glUniform1i(glGetUniformLocation(numberShader, "positionIndicator"), 0);
+        glBindVertexArray(VAO[8]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glBindTexture(GL_TEXTURE_2D, numberTextures[oxygenTens]);
+        glUniform1i(glGetUniformLocation(numberShader, "positionIndicator"), 1);
+        glBindVertexArray(VAO[9]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glBindTexture(GL_TEXTURE_2D, numberTextures[oxygenOnes]);
+        glUniform1i(glGetUniformLocation(numberShader, "positionIndicator"), 2);
+        glBindVertexArray(VAO[10]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -235,7 +509,7 @@ void generateObject(std::vector<Object>* objects) {
     objects->push_back(newObject);
 }
 
-void processInput(GLFWwindow* window, int* isSonarTurnedOn) {
+void processInput(GLFWwindow* window, int* isSonarTurnedOn, float* depth) {
     static int lastMouseState = GLFW_RELEASE;
     int currentMouseState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
 
@@ -259,6 +533,20 @@ void processInput(GLFWwindow* window, int* isSonarTurnedOn) {
         *isSonarTurnedOn = (*isSonarTurnedOn) ? 0 : 1;
 
     lastMouseState = currentMouseState; // Update last mouse state
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        if (*depth < 250)
+            (*depth) += 0.05;
+    }
+        
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        if (*depth > 0)
+            (*depth) -= 0.05;
+        else
+            (*depth) = 0;
+    }
+        
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -337,6 +625,46 @@ unsigned int createShader(const char* vsSource, const char* fsSource)
     glDeleteShader(fragmentShader);
 
     return program;
+}
+
+std::unordered_map<int, GLuint> loadNumberTextures() {
+    std::unordered_map<int, GLuint> textures;
+    for (int i = 0; i <= 9; ++i) {
+        std::string filename = std::to_string(i) + ".png";
+
+        GLuint textureID;
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+
+        // Load the image using STB Image
+        int width, height, nrChannels;
+        stbi_set_flip_vertically_on_load(true); // Flip the image vertically
+        unsigned char* data = stbi_load(filename.c_str(), &width, &height, &nrChannels, 0);
+
+        if (data) {
+            GLenum format = (nrChannels == 3) ? GL_RGB : GL_RGBA; // Determine format
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+
+            // Texture parameters
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            textures[i] = textureID; // Store the texture ID in the map
+        }
+        else {
+            std::cerr << "Failed to load texture: " << filename << std::endl;
+            glDeleteTextures(1, &textureID);
+        }
+
+        stbi_image_free(data);
+    }
+
+    // Unbind the texture
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return textures;
 }
 
 unsigned int createTexture(const char* tSource) {
