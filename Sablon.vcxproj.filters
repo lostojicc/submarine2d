@@ -24,14 +24,65 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="basic.frag">
+    <None Include="sonar.vert">
       <Filter>Source Files\Shader Files</Filter>
     </None>
-    <None Include="basic.vert">
+    <None Include="sonar.frag">
       <Filter>Source Files\Shader Files</Filter>
     </None>
-    <None Include="texture.frag">
+    <None Include="panel.vert">
       <Filter>Source Files\Shader Files</Filter>
     </None>
+    <None Include="panel.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="texturedRectangle.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="button.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="progressBar.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="depthBar.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="oBar.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="number.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="number.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="achtung.frag" />
+    <None Include="texturedRectangle.frag" />
+    <None Include="warningLight.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="warningLight.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="metal-panel.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="off-button.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="on-button.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="sonar.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

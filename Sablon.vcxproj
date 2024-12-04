@@ -144,10 +144,31 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="basic.frag" />
-    <None Include="basic.vert" />
+    <None Include="achtung.frag" />
+    <None Include="button.frag" />
+    <None Include="texturedRectangle.frag" />
+    <None Include="texturedRectangle.vert" />
+    <None Include="depthBar.frag" />
+    <None Include="number.frag" />
+    <None Include="number.vert" />
+    <None Include="oBar.frag" />
+    <None Include="panel.vert" />
     <None Include="packages.config" />
-    <None Include="texture.frag" />
+    <None Include="panel.frag" />
+    <None Include="progressBar.vert" />
+    <None Include="sonar.frag" />
+    <None Include="sonar.vert" />
+    <None Include="warningLight.vert" />
+    <None Include="warningLight.frag" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stb_image.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="metal-panel.jpg" />
+    <Image Include="off-button.png" />
+    <Image Include="on-button.png" />
+    <Image Include="sonar.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
