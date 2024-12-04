@@ -5,6 +5,8 @@
 #include <GLFW/glfw3.h>
 #include <random>
 #include <vector>
+#include <chrono>
+#include <thread>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -24,6 +26,10 @@ unsigned int createTexture(const char* tSource);
 unsigned int createSonarTexture();
 unsigned int createOffButtonTexture();
 unsigned int createOnButtonTexture();
+unsigned int createAchtungTexture();
+unsigned int createStableTexture();
+unsigned int createLogoTexture();
+void limitFPS();
 void generateObject(std::vector<Object>* objects);
 std::unordered_map<int, GLuint> loadNumberTextures();
 
@@ -63,12 +69,14 @@ int main(void)
     unsigned int depthBarShader = createShader("progressBar.vert", "depthBar.frag");
     unsigned int oBarShader = createShader("progressBar.vert", "oBar.frag");
     unsigned int numberShader = createShader("texturedRectangle.vert", "number.frag");
+    unsigned int achtungShader = createShader("texturedRectangle.vert", "achtung.frag");
+    unsigned int texturedRectangleShader = createShader("texturedRectangle.vert", "texturedRectangle.frag");
 
-    unsigned int VBO[11], VAO[11], EBO[10];
+    unsigned int VBO[13], VAO[13], EBO[12];
 
-    glGenVertexArrays(11, VAO);
-    glGenBuffers(11, VBO);
-    glGenBuffers(10, EBO);
+    glGenVertexArrays(13, VAO);
+    glGenBuffers(13, VBO);
+    glGenBuffers(12, EBO);
 
     float vertices[] = {
          1.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.5f,    1.0,  1.0,    // top right
@@ -320,12 +328,59 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    
+    float achtungVertices[] = {
+    0.55f, -0.5f, 0.0f,  1.0f, 1.0f,  // top right
+    0.55f, -0.8f, 0.0f,  1.0f, 0.0f,  // bottom right
+    -0.5f, -0.8f, 0.0f,  0.0f, 0.0f,  // bottom left
+    -0.5f,  -0.5f, 0.0f,   0.0f, 1.0f  // top left 
+    };
+    unsigned int achtungIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[11]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[11]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(achtungVertices), achtungVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[10]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(achtungIndices), achtungIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    float logoVertices[] = {
+        -0.6f, -0.6f, 0.0f,  1.0f, 1.0f,  // top right
+        -0.6f, -1.0f, 0.0f,  1.0f, 0.0f,  // bottom right
+        -1.0f, -1.0f, 0.0f,  0.0f, 0.0f,  // bottom left
+        -1.0f,  -0.6f, 0.0f,   0.0f, 1.0f  // top left 
+    };
+    unsigned int logoIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[12]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[12]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(logoVertices), logoVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[11]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(logoIndices), logoIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
     unsigned int metalPanelTexture = createTexture("metal-panel.jpg");
     unsigned int sonarTexture = createSonarTexture();
     unsigned int buttonOffTexture = createOffButtonTexture();
     unsigned int buttonOnTexture = createOnButtonTexture();
+    unsigned int achtungTexture = createAchtungTexture();
+    unsigned int stableTexture = createStableTexture();
+    unsigned int logoTexture = createLogoTexture();
     std::unordered_map<int, GLuint> numberTextures = loadNumberTextures();
 
     int isSonarTurnedOn = 0;
@@ -336,6 +391,9 @@ int main(void)
     std::vector<Object> objects;
     float depth = 0;
     float oxygen = 100;
+    int showText = 0;
+    int oxygenTimer = 0;
+    int lastOState = 1;
     int depthHundreds, depthTens, depthOnes, oxygenHundreds, oxygenTens, oxygenOnes;
 
     while (!glfwWindowShouldClose(window))
@@ -348,6 +406,12 @@ int main(void)
         glViewport(0, 0, mode->width, mode->height);
         glUseProgram(program);
         glBindVertexArray(VAO[0]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glBindTexture(GL_TEXTURE_2D, logoTexture);
+        glUseProgram(texturedRectangleShader);
+        glBindVertexArray(VAO[12]);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
@@ -368,7 +432,7 @@ int main(void)
 
         auto it = objects.begin();
         while (it != objects.end()) {
-            it->lifetime -= 0.001;
+            it->lifetime -= 0.01;
             if (it->lifetime <= 0.0f) {
                 it = objects.erase(it);
             }
@@ -429,7 +493,7 @@ int main(void)
 
         if (depth == 0) {
             if (oxygen < 100)
-                oxygen += 0.05;
+                oxygen += 0.5;
         }
 
         glUseProgram(oBarShader);
@@ -492,6 +556,31 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        glUseProgram(achtungShader);
+
+        if (oxygen <= 25) {
+            glBindTexture(GL_TEXTURE_2D, achtungTexture);
+            if (currentTime - 0.5 > oxygenTimer)
+                showText = 1;
+            else
+                showText = 0;
+            oxygenTimer = currentTime;
+            lastOState = 0;
+        }
+        else if (oxygen > 75) {
+            glBindTexture(GL_TEXTURE_2D, stableTexture);
+            showText = 1;
+            lastOState = 1;
+        }
+        else
+            showText = 0;
+        
+        glUniform1i(glGetUniformLocation(achtungShader, "showText"), showText);
+        glBindVertexArray(VAO[11]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+        
+        limitFPS();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -536,13 +625,13 @@ void processInput(GLFWwindow* window, int* isSonarTurnedOn, float* depth) {
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         if (*depth < 250)
-            (*depth) += 0.05;
+            (*depth)++;
     }
         
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         if (*depth > 0)
-            (*depth) -= 0.05;
+            (*depth)--;
         else
             (*depth) = 0;
     }
@@ -550,6 +639,18 @@ void processInput(GLFWwindow* window, int* isSonarTurnedOn, float* depth) {
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+}
+
+void limitFPS() {
+    int frameDelay = 1000 / 60;
+    static auto lastFrameTime = std::chrono::high_resolution_clock::now();
+    auto currentFrameTime = std::chrono::high_resolution_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentFrameTime - lastFrameTime).count();
+
+    if (elapsedTime < (1000 / 60)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(frameDelay - elapsedTime));
+    }
+    lastFrameTime = std::chrono::high_resolution_clock::now();
 }
 
 void convertNDCtoWindowCoords(float ndcX, float ndcY, int windowWidth, int windowHeight, float* windowX, float* windowY) {
@@ -808,3 +909,109 @@ unsigned int createSonarTexture() {
 
     return texture;
 }
+
+unsigned int createAchtungTexture() {
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // Texture wrapping parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+    // Texture filtering parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Load image
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true); // Flip the texture vertically if needed
+    unsigned char* data = stbi_load("achtung.png", &width, &height, &nrChannels, 0);
+    if (data) {
+        // Determine the format
+        GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+
+        // Upload texture data
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else {
+        std::cout << "Failed to load texture achtung" << std::endl;
+    }
+
+    stbi_image_free(data);
+    glBindTexture(GL_TEXTURE_2D, 0); // Unbind only after the texture is fully loaded
+
+    return texture;
+}
+
+unsigned int createStableTexture() {
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // Texture wrapping parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+    // Texture filtering parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Load image
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true); // Flip the texture vertically if needed
+    unsigned char* data = stbi_load("stable.png", &width, &height, &nrChannels, 0);
+    if (data) {
+        // Determine the format
+        GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+
+        // Upload texture data
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+
+    stbi_image_free(data);
+    glBindTexture(GL_TEXTURE_2D, 0); // Unbind only after the texture is fully loaded
+
+    return texture;
+}
+
+unsigned int createLogoTexture() {
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // Texture wrapping parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Texture filtering parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Load image
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true); // Flip the texture vertically if needed
+    unsigned char* data = stbi_load("logo.png", &width, &height, &nrChannels, 0);
+    if (data) {
+        // Determine the format
+        GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+
+        // Upload texture data
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+
+    stbi_image_free(data);
+    glBindTexture(GL_TEXTURE_2D, 0); // Unbind only after the texture is fully loaded
+
+    return texture;
+}
+

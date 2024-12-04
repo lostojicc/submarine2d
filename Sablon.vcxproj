@@ -144,7 +144,9 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="achtung.frag" />
     <None Include="button.frag" />
+    <None Include="texturedRectangle.frag" />
     <None Include="texturedRectangle.vert" />
     <None Include="depthBar.frag" />
     <None Include="number.frag" />
