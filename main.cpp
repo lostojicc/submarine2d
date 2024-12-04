@@ -71,12 +71,13 @@ int main(void)
     unsigned int numberShader = createShader("texturedRectangle.vert", "number.frag");
     unsigned int achtungShader = createShader("texturedRectangle.vert", "achtung.frag");
     unsigned int texturedRectangleShader = createShader("texturedRectangle.vert", "texturedRectangle.frag");
+    unsigned int warningLightShader = createShader("warningLight.vert", "warningLight.frag");
 
-    unsigned int VBO[13], VAO[13], EBO[12];
+    unsigned int VBO[14], VAO[14], EBO[13];
 
-    glGenVertexArrays(13, VAO);
-    glGenBuffers(13, VBO);
-    glGenBuffers(12, EBO);
+    glGenVertexArrays(14, VAO);
+    glGenBuffers(14, VBO);
+    glGenBuffers(13, EBO);
 
     float vertices[] = {
          1.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 0.5f,    1.0,  1.0,    // top right
@@ -374,6 +375,27 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    float warningLightVertices[] = {
+        0.5f,  0.0f, 0.0f,    // top right
+        0.5f, -1.0f, 0.0f,    // bottom right
+        -0.5f, -1.0f, 0.0f,    // bottom left
+        -0.5f,  -0.0f, 0.0f     // top left 
+    };
+    unsigned int warningLightIndices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    glBindVertexArray(VAO[13]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO[13]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(warningLightVertices), warningLightVertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[12]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(warningLightIndices), warningLightIndices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
     unsigned int metalPanelTexture = createTexture("metal-panel.jpg");
     unsigned int sonarTexture = createSonarTexture();
     unsigned int buttonOffTexture = createOffButtonTexture();
@@ -393,7 +415,7 @@ int main(void)
     float oxygen = 100;
     int showText = 0;
     int oxygenTimer = 0;
-    int lastOState = 1;
+    int lastOState = 0;
     int depthHundreds, depthTens, depthOnes, oxygenHundreds, oxygenTens, oxygenOnes;
 
     while (!glfwWindowShouldClose(window))
@@ -409,11 +431,14 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glBindTexture(GL_TEXTURE_2D, logoTexture);
         glUseProgram(texturedRectangleShader);
         glBindVertexArray(VAO[12]);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+        glDisable(GL_BLEND);
 
         glBindTexture(GL_TEXTURE_2D, sonarTexture);
 
@@ -565,12 +590,12 @@ int main(void)
             else
                 showText = 0;
             oxygenTimer = currentTime;
-            lastOState = 0;
+            lastOState = 1;
         }
         else if (oxygen > 75) {
             glBindTexture(GL_TEXTURE_2D, stableTexture);
             showText = 1;
-            lastOState = 1;
+            lastOState = 0;
         }
         else
             showText = 0;
@@ -579,6 +604,18 @@ int main(void)
         glBindVertexArray(VAO[11]);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+        
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        
+        glViewport(0, 0, mode->width, mode->height);
+        glUseProgram(warningLightShader);
+        glUniform1i(glGetUniformLocation(warningLightShader, "isLightOn"), lastOState);
+        glBindVertexArray(VAO[13]);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+        glDisable(GL_BLEND);
         
         limitFPS();
         glfwSwapBuffers(window);

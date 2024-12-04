@@ -158,6 +158,8 @@
     <None Include="progressBar.vert" />
     <None Include="sonar.frag" />
     <None Include="sonar.vert" />
+    <None Include="warningLight.vert" />
+    <None Include="warningLight.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stb_image.h" />
